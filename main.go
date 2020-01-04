@@ -17,15 +17,6 @@ import (
 	"strconv"
 )
 
-var (
-	fileRegEx   = regexp.MustCompile("^([0-9][0-9][0-9][0-9])(-[0-9]+)?(-[A-Za-z]+)?\\.(jpg|png|gif)$")
-	ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
-	autoFixes   = []*fix{
-		newFix("^([0-9][0-9][0-9][0-9])_([0-9]+)\\.(jpg|png|gif)$", "%s-%s.%s"),
-		newFix("^([0-9][0-9][0-9][0-9]).JPG$", "%s.jpg"),
-		newFix("^([0-9][0-9][0-9][0-9])-([0-9]+).JPG$", "%s-%s.jpg")}
-)
-
 func main() {
 	dir := flag.String("dir", "", "The directory to analyze")
 	af := flag.Bool("fix", false, "Whether to automatically fix simple typos in file names")
@@ -75,6 +66,15 @@ func main() {
 		fmt.Println(unused)
 	}
 }
+
+var (
+	fileRegEx   = regexp.MustCompile("^([0-9][0-9][0-9][0-9])(-[0-9]+)?(-[A-Za-z]+)?\\.(jpg|png|gif)$")
+	ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
+	autoFixes   = []*fix{
+		newFix("^([0-9][0-9][0-9][0-9])_([0-9]+)\\.(jpg|png|gif)$", "%s-%s.%s"),
+		newFix("^([0-9][0-9][0-9][0-9]).JPG$", "%s.jpg"),
+		newFix("^([0-9][0-9][0-9][0-9])-([0-9]+).JPG$", "%s-%s.jpg")}
+)
 
 type fix struct {
 	regex       *regexp.Regexp // Pattern to match to trigger automatic filename fix
