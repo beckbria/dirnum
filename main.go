@@ -68,7 +68,7 @@ func main() {
 }
 
 var (
-	fileRegEx   = regexp.MustCompile("^([0-9][0-9][0-9][0-9])(-[0-9]+)?(-[A-Za-z]+)?\\.(jpg|png|gif)$")
+	fileRegEx   = regexp.MustCompile("^([0-9][0-9][0-9][0-9])(-[0-9]+)?(-[A-Za-z][A-Za-z0-9]+)?\\.(jpg|png|gif)$")
 	ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
 	autoFixes   = []*fix{
 		newFix("^([0-9][0-9][0-9][0-9])_([0-9]+)\\.(jpg|png|gif)$", "%s-%s.%s"),
