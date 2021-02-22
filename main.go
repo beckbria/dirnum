@@ -18,17 +18,16 @@ import (
 )
 
 func main() {
-	dir := flag.String("dir", "", "The directory to analyze")
+	dir := flag.String("dir", "", "The directory to analyze (mandatory)")
 	af := flag.Bool("fix", false, "Whether to automatically fix simple typos in file names")
-	pu := flag.Bool("printUnused", false, "Print a list of major numbers missing from the sequence")
+	showUnused := flag.Bool("unused", false, "Print a list of major numbers missing from the sequence")
+	quiet := flag.Bool("quiet", false, "Do not print validation errors encountered")
 	flag.Parse()
 
 	if dir == nil || len(*dir) < 1 {
-		log.Fatalf(
-			"Usage: %s -dir=directory\n\n"+
-				"Options:\n"+
-				"  -fix=true\t\tAutomatically fix simple filename typos\n"+
-				"  -printUnused=true\tPrint a list of skipped major versions\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s\n", os.Args[0])
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 
 	files, err := ioutil.ReadDir(*dir)
@@ -47,22 +46,25 @@ func main() {
 	}
 
 	errors, unused := validate(fileNames)
-	if len(errors) == 0 {
-		fmt.Println("No errors found")
-	} else {
-		filesWithErrors := []string{}
-		for f := range errors {
-			filesWithErrors = append(filesWithErrors, f)
-		}
-		sort.Strings(filesWithErrors)
-		for _, f := range filesWithErrors {
-			for _, e := range errors[f] {
-				fmt.Printf("\"%s\": %s\n", f, e)
+	if (quiet != nil && !*quiet) {
+		if len(errors) == 0 {
+			fmt.Println("No errors found")
+		} else {
+			filesWithErrors := []string{}
+			for f := range errors {
+				filesWithErrors = append(filesWithErrors, f)
+			}
+			sort.Strings(filesWithErrors)
+			for _, f := range filesWithErrors {
+				for _, e := range errors[f] {
+					fmt.Printf("\"%s\": %s\n", f, e)
+				}
 			}
 		}
 	}
 
-	if pu != nil && *pu {
+	if showUnused != nil && *showUnused {
+		fmt.Print("Unused ordinals: ")
 		fmt.Println(unused)
 	}
 }
