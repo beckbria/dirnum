@@ -288,7 +288,10 @@ func prompt(q string) bool {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if len(a) != 2 {
+		// Replace line endings
+		a = strings.Replace(a, "\n", "", -1)
+		a = strings.Replace(a, "\r", "", -1)
+		if len(a) != 1 {
 			continue
 		}
 		switch strings.ToLower(strings.TrimSpace(a))[0] {
