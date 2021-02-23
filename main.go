@@ -15,11 +15,12 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 func main() {
 	dir := flag.String("dir", "", "The directory to analyze (mandatory)")
-	af := flag.Bool("fix", false, "Whether to automatically fix simple typos in file names")
+	af := flag.Bool("fix", false, "Automatically fix simple typos in file names")
 	showUnused := flag.Bool("unused", false, "Print a list of major numbers missing from the sequence")
 	quiet := flag.Bool("quiet", false, "Do not print validation errors encountered")
 	flag.Parse()
@@ -35,18 +36,19 @@ func main() {
 		log.Fatal(err)
 	}
 	fileNames := []string{}
+	fix := af != nil && *af
 	for _, f := range files {
-		fn := f.Name()
-		if !ignoreRegEx.MatchString(fn) {
-			if af != nil && *af {
-				fn = autoFix(fn, *dir)
+		n := f.Name()
+		if !ignoreRegEx.MatchString(n) {
+			if fix {
+				n = autoFix(n, dir)
 			}
-			fileNames = append(fileNames, fn)
+			fileNames = append(fileNames, n)
 		}
 	}
 
 	errors, unused := validate(fileNames)
-	if (quiet != nil && !*quiet) {
+	if quiet != nil && !*quiet {
 		if len(errors) == 0 {
 			fmt.Println("No errors found")
 		} else {
@@ -64,7 +66,7 @@ func main() {
 	}
 
 	if showUnused != nil && *showUnused {
-		fmt.Print("Unused ordinals: ")
+		fmt.Print("Unused major numbers: ")
 		fmt.Println(unused)
 	}
 }
@@ -78,12 +80,69 @@ var (
 		newFix("^([0-9][0-9][0-9][0-9])-([0-9]+).JPG$", "%s-%s.jpg")}
 )
 
+const noMinor = -99
+
 type fix struct {
 	regex       *regexp.Regexp // Pattern to match to trigger automatic filename fix
 	replacement string         // Format string accepting string parameters for all the tokens in the pattern
 }
 
-func autoFix(oldName, dirName string) string {
+type fileNamePieces struct {
+	major, minor, majorDigits, minorDigits int
+	tokens                                 []string
+}
+
+func (f *fileNamePieces) String() string {
+	f.tokens[0] = prependZeroes(strconv.Itoa(f.major), f.majorDigits)
+	if f.minor != noMinor {
+		f.tokens[1] = prependZeroes(strconv.Itoa(f.minor), f.minorDigits)
+	}
+	return strings.Join(f.tokens, "-")
+}
+
+func prependZeroes(n string, l int) string {
+	for len(n) < l {
+		n = "0" + n
+	}
+	return n
+}
+
+func parseFileName(f string) (*fileNamePieces, error) {
+	tokens := fileRegEx.FindStringSubmatch(f)
+	if tokens == nil {
+		return nil, fmt.Errorf("Bad filename: %s", f)
+	}
+	major, err := strconv.Atoi(tokens[1])
+	if err != nil {
+		return nil, fmt.Errorf("Invalid major version \"%s\": %s", tokens[1], f)
+	}
+	minor := noMinor
+	if len(tokens[2]) > 0 {
+		minorStr := string([]rune(tokens[2])[1:])
+		m, err := strconv.Atoi(minorStr)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid minor version \"%s\": %s", minorStr, f)
+		}
+		minor = m
+	}
+	name := fileNamePieces{
+		major:       major,
+		minor:       minor,
+		majorDigits: len(strconv.Itoa(major)),
+		minorDigits: len(strconv.Itoa(minor)),
+		tokens:      tokens,
+	}
+	return &name, nil
+}
+
+func renameFile(oldName, newName string, dirName *string) {
+	oldPath := *dirName + string(os.PathSeparator) + oldName
+	newPath := *dirName + string(os.PathSeparator) + newName
+	fmt.Printf("Renaming %s to %s\n", oldPath, newPath)
+	os.Rename(oldPath, newPath)
+}
+
+func autoFix(oldName string, dirName *string) string {
 	for _, f := range autoFixes {
 		tokens := f.regex.FindStringSubmatch(oldName)
 		if tokens == nil {
@@ -95,10 +154,7 @@ func autoFix(oldName, dirName string) string {
 			t2 = append(t2, interface{}(s))
 		}
 		newName := fmt.Sprintf(f.replacement, t2...)
-		oldPath := dirName + string(os.PathSeparator) + oldName
-		newPath := dirName + string(os.PathSeparator) + newName
-		fmt.Printf("Renaming %s to %s\n", oldPath, newPath)
-		os.Rename(oldPath, newPath)
+		renameFile(oldName, newName, dirName)
 		return newName
 	}
 	// This isn't a file we can fix
@@ -137,41 +193,24 @@ func (v validationErrors) add(filename, err string) {
 	v[filename] = append(v[filename], err)
 }
 
-const noMinor = -99
-
 // Returns any errors found and a list of any skipped major version numbers
 func validate(files []string) (validationErrors, []int) {
 	errors := make(validationErrors)
 	seen := make(seenMajorMinor)
 	for _, f := range files {
-		tokens := fileRegEx.FindStringSubmatch(f)
-		if tokens == nil {
-			errors.add(f, fmt.Sprintf("Bad filename: %s", f))
-			continue
-		}
-		major, err := strconv.Atoi(tokens[1])
+		name, err := parseFileName(f)
 		if err != nil {
-			errors.add(f, fmt.Sprintf("Invalid major version \"%s\": %s", tokens[1], f))
+			errors.add(f, err.Error())
 			continue
 		}
-		minor := noMinor
-		if len(tokens[2]) > 0 {
-			minorStr := string([]rune(tokens[2])[1:])
-			m, err := strconv.Atoi(minorStr)
-			if err != nil {
-				errors.add(f, fmt.Sprintf("Invalid minor version \"%s\": %s", minorStr, f))
-				continue
-			}
-			minor = m
-		}
-		e := seen.add(major, minor, f)
-		if e != nil {
-			oldFile := seen[major][minor]
+		err = seen.add(name.major, name.minor, f)
+		if err != nil {
+			oldFile := seen[name.major][name.minor]
 			errText := ""
-			if minor == noMinor {
-				errText = fmt.Sprintf("Overridden Major Number %d for files: \"%s\", \"%s\"", major, oldFile, f)
+			if name.minor == noMinor {
+				errText = fmt.Sprintf("Overridden Major Number %d for files: \"%s\", \"%s\"", name.major, oldFile, f)
 			} else {
-				errText = fmt.Sprintf("Duplicate Major/Minor %d-%d for files: \"%s\", \"%s\"", major, minor, oldFile, f)
+				errText = fmt.Sprintf("Duplicate Major/Minor %d-%d for files: \"%s\", \"%s\"", name.major, name.minor, oldFile, f)
 			}
 			errors.add(f, errText)
 			errors.add(oldFile, errText)
