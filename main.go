@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +24,7 @@ func main() {
 	af := flag.Bool("fix", false, "Automatically fix simple typos in file names")
 	showUnused := flag.Bool("unused", false, "Print a list of major numbers missing from the sequence")
 	quiet := flag.Bool("quiet", false, "Do not print validation errors encountered")
+	renumber := flag.Bool("renumber", false, "Automatically renumber files to fill in gaps in major numbers")
 	flag.Parse()
 
 	if dir == nil || len(*dir) < 1 {
@@ -69,10 +71,23 @@ func main() {
 		fmt.Print("Unused major numbers: ")
 		fmt.Println(unused)
 	}
+
+	if renumber != nil && *renumber {
+		ren := suggestedRenames(fileNames, unused)
+		fmt.Println("\nProposed renames: ")
+		for _, r := range ren {
+			fmt.Printf("%s => %s\n", r.oldName, r.newName)
+		}
+		if prompt("Rename files?") {
+			for _, r := range ren {
+				renameFile(r.oldName, r.newName, dir)
+			}
+		}
+	}
 }
 
 var (
-	fileRegEx   = regexp.MustCompile("^([0-9][0-9][0-9][0-9])(-[0-9]+)?(-[A-Za-z][A-Za-z0-9]+)?\\.(jpg|png|gif)$")
+	fileRegEx   = regexp.MustCompile("^([0-9]+)(-[0-9]+)?(-[A-Za-z][A-Za-z0-9]+)?\\.(jpg|png|gif)$")
 	ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
 	autoFixes   = []*fix{
 		newFix("^([0-9][0-9][0-9][0-9])_([0-9]+)\\.(jpg|png|gif)$", "%s-%s.%s"),
@@ -89,15 +104,24 @@ type fix struct {
 
 type fileNamePieces struct {
 	major, minor, majorDigits, minorDigits int
-	tokens                                 []string
+	originalName, descriptor, extension    string
 }
 
 func (f *fileNamePieces) String() string {
-	f.tokens[0] = prependZeroes(strconv.Itoa(f.major), f.majorDigits)
+	var b strings.Builder
+	b.Grow(len(f.originalName))
+	b.WriteString(prependZeroes(strconv.Itoa(f.major), f.majorDigits)) // Major version
 	if f.minor != noMinor {
-		f.tokens[1] = prependZeroes(strconv.Itoa(f.minor), f.minorDigits)
+		b.WriteRune('-')
+		b.WriteString(prependZeroes(strconv.Itoa(f.minor), f.minorDigits))
 	}
-	return strings.Join(f.tokens, "-")
+	if len(f.descriptor) > 0 {
+		// The descriptor includes the leading dash
+		b.WriteString(f.descriptor)
+	}
+	b.WriteRune('.')
+	b.WriteString(f.extension)
+	return b.String()
 }
 
 func prependZeroes(n string, l int) string {
@@ -125,14 +149,155 @@ func parseFileName(f string) (*fileNamePieces, error) {
 		}
 		minor = m
 	}
+	minorDigits := 0
+	if minorDigits != noMinor {
+		minorDigits = len(strconv.Itoa(minor))
+	}
 	name := fileNamePieces{
-		major:       major,
-		minor:       minor,
-		majorDigits: len(strconv.Itoa(major)),
-		minorDigits: len(strconv.Itoa(minor)),
-		tokens:      tokens,
+		major:        major,
+		minor:        minor,
+		majorDigits:  len(strconv.Itoa(major)),
+		minorDigits:  minorDigits,
+		descriptor:   tokens[3],
+		extension:    tokens[4],
+		originalName: f,
 	}
 	return &name, nil
+}
+
+// pfnpSlice represents a set of file names that can be sorted by major+minor version
+type pfnpSlice []*fileNamePieces
+
+func (s pfnpSlice) Len() int {
+	return len(s)
+}
+
+func (s pfnpSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s pfnpSlice) Less(i, j int) bool {
+	first := s[i]
+	second := s[j]
+
+	if first.major < second.major {
+		return true
+	} else if first.major > second.major {
+		return false
+	}
+	// Major version is the same, compare minor version
+	return first.minor < second.minor
+}
+
+type renameEntry struct {
+	oldName, newName string
+}
+
+func max(i, j int) int {
+	if i > j {
+		return i
+	}
+	return j
+}
+
+func suggestedRenames(fileNames []string, unused []int) []renameEntry {
+	files := make(pfnpSlice, 0)
+	for _, f := range fileNames {
+		n, err := parseFileName(f)
+		if err == nil {
+			// Don't try to rename files which aren't named correctly
+			files = append(files, n)
+		} else {
+			fmt.Printf(err.Error())
+		}
+	}
+
+	// Sort the list by major/minor version
+	sort.Sort(files)
+	rename := make([]renameEntry, 0)
+
+	if len(files) == 0 {
+		return rename
+	}
+
+	// Compute the number of digits required by the major/minor version.
+	// We intentionally ignore the edge case where filling the gaps will
+	// reduce the number of digits required - if so, the extra digit
+	// will likely be required soon enough.  If it's particularly important,
+	// running the tool a second time will remove the extra digit.
+	// The number of minor digits is computed for each major digit
+	majorDigits := 0
+	minorDigits := make(map[int]int)
+	for _, f := range files {
+		majorDigits = max(majorDigits, f.majorDigits)
+		minorDigits[f.major] = max(minorDigits[f.major], f.minorDigits)
+	}
+
+	// Renumber all minor version numbers
+	previousMajor := -1 // Negative number isn't a valid major version
+	for i, f := range files {
+		f.minorDigits = minorDigits[f.major]
+		f.majorDigits = majorDigits
+		if f.major != previousMajor {
+			// This is the first of a series.  Determine if we need to start counting
+			if (i == len(files)-1) || f.major != files[i+1].major {
+				f.minor = noMinor
+			} else {
+				f.minor = 0
+			}
+			previousMajor = f.major
+		} else {
+			// Claim the next available minor version
+			f.minor = files[i-1].minor + 1
+		}
+	}
+
+	// Fill in gaps in major numbers.
+	// Keep track of the highest unmodified major version number
+	majorIdx := len(files) - 1
+	for len(unused) > 0 {
+		firstUnused := unused[0]
+		unused = unused[1:]
+		if firstUnused > files[majorIdx].major {
+			// We've filled in to a continuous loop
+			break
+		}
+		// Change the major version to the unused value
+		for oldMajor := files[majorIdx].major; majorIdx >= 0 && files[majorIdx].major == oldMajor; majorIdx-- {
+			files[majorIdx].major = firstUnused
+		}
+	}
+
+	// Determine any files whose names changed.  Add them to the list
+	for _, f := range files {
+		old := f.originalName
+		new := f.String()
+		if old != new {
+			rename = append(rename, renameEntry{oldName: old, newName: new})
+		}
+	}
+	return rename
+}
+
+// Prompts the user for a yes or no answer
+func prompt(q string) bool {
+	in := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Printf("%s (y/n): ", q)
+		a, err := in.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(a) != 2 {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(a))[0] {
+		case 'y':
+			return true
+		case 'n':
+			return false
+		}
+	}
 }
 
 func renameFile(oldName, newName string, dirName *string) {
