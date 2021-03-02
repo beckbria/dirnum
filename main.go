@@ -150,7 +150,7 @@ func parseFileName(f string) (*fileNamePieces, error) {
 		minor = m
 	}
 	minorDigits := 0
-	if minorDigits != noMinor {
+	if minor != noMinor {
 		minorDigits = len(strconv.Itoa(minor))
 	}
 	name := fileNamePieces{
