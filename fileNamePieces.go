@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const NoMinorVersion = -99 // Indicates a file with no minor version
+
 type FileNamePieces struct {
 	major, minor, majorDigits, minorDigits int
 	originalName, descriptor, extension    string
@@ -15,7 +17,7 @@ func (f *FileNamePieces) String() string {
 	var b strings.Builder
 	b.Grow(len(f.originalName))
 	b.WriteString(prependZeroes(strconv.Itoa(f.major), f.majorDigits)) // Major version
-	if f.minor != noMinor {
+	if f.minor != NoMinorVersion {
 		b.WriteRune('-')
 		b.WriteString(prependZeroes(strconv.Itoa(f.minor), f.minorDigits))
 	}
@@ -44,7 +46,7 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Invalid major version \"%s\": %s", tokens[1], f)
 	}
-	minor := noMinor
+	minor := NoMinorVersion
 	if len(tokens[2]) > 0 {
 		minorStr := string([]rune(tokens[2])[1:])
 		m, err := strconv.Atoi(minorStr)
@@ -54,7 +56,7 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 		minor = m
 	}
 	minorDigits := 0
-	if minor != noMinor {
+	if minor != NoMinorVersion {
 		minorDigits = len(strconv.Itoa(minor))
 	}
 	name := FileNamePieces{

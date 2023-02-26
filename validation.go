@@ -65,7 +65,7 @@ func ValidateFileNames(files []string) (ValidationErrors, []int) {
 		if err != nil {
 			oldFile := seen[name.major][name.minor]
 			errText := ""
-			if name.minor == noMinor {
+			if name.minor == NoMinorVersion {
 				errText = fmt.Sprintf("Overridden Major Number %d for files: \"%s\", \"%s\"", name.major, oldFile, f)
 			} else {
 				errText = fmt.Sprintf("Duplicate Major/Minor %d-%d for files: \"%s\", \"%s\"", name.major, name.minor, oldFile, f)
@@ -135,14 +135,14 @@ func validateMajor(nums []int) (map[int]string, []int) {
 func validateMinor(nums []int) map[int]string {
 	errors := make(map[int]string)
 	if len(nums) == 1 {
-		if nums[0] != noMinor {
+		if nums[0] != NoMinorVersion {
 			errors[nums[0]] = fmt.Sprintf("Minor version %d on single file: %%s", nums[0])
 		}
 	} else if len(nums) > 1 {
 		prev := -1
 		for _, n := range nums {
 			if n != (prev + 1) {
-				if prev == -1 || prev == noMinor {
+				if prev == -1 || prev == NoMinorVersion {
 					errors[n] = "Minor version numbering must start with 0: %s"
 				} else {
 					errors[n] = fmt.Sprintf("Minor numbering jumped from %d to %d: %%s", prev, n)
