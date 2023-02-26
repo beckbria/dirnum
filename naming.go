@@ -13,26 +13,34 @@ func ComputeRenames(fileNames []string, unused []int) []RenameEntry {
 	renumberMinorVersions(files)
 
 	// Fill in gaps in major numbers.
-
-	// First, backtrack to determine how many entries we need to fill
-	majorIdx := len(files) - 1
-	unusedIdx := 0
-	for ; unusedIdx < len(unused) && majorIdx > 0; unusedIdx++ {
-		if unused[unusedIdx] > files[majorIdx].major {
-			// We've filled in to a continuous loop
+	// Determine what major version to use to begin filling holes
+	majorIdx := len(files) - 1 // Skip the first value since the largest major version will fit in that slot
+	for unusedIdx := 0; unusedIdx < len(unused); unusedIdx++ {
+		// If the "hole" is larger than what we would fill it with, we've completed the sequence
+		if majorIdx <= 0 || unused[unusedIdx] > files[majorIdx].major {
 			break
 		}
+
+		// Ensure that we're on the first file with this major version
+		for ; majorIdx > 0 && files[majorIdx-1].major == files[majorIdx].major; majorIdx-- {
+		}
+
 		majorIdx--
 	}
+	// Undo our last shift - it's the one that pushed us too far
+	// TODO: This is a bit of a code smell - can we refactor to get rid of this increment and instead only
+	// decrement when appropriate?
+	if majorIdx < len(files)-1 {
+		majorIdx++
+	}
+	// Rename the files to fill in the holes
+	for _, u := range unused {
+		if majorIdx >= len(files) || u > files[majorIdx].major {
+			break
+		}
 
-	// Now rename files in order
-	for len(unused) > 0 && majorIdx < len(files) {
-		firstUnused := unused[0]
-		unused = unused[1:]
-
-		// Change the major version to the unused value
 		for oldMajor := files[majorIdx].major; majorIdx < len(files) && files[majorIdx].major == oldMajor; majorIdx++ {
-			files[majorIdx].major = firstUnused
+			files[majorIdx].major = u
 		}
 	}
 
