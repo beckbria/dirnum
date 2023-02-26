@@ -10,7 +10,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -30,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fileNames, err := readFileNames(*dir)
+	fileNames, err := ReadFileNames(*dir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,38 +49,20 @@ func main() {
 		}
 		if prompt("Rename files?") {
 			for _, r := range ren {
-				renameFile(r.oldName, r.newName, dir)
+				RenameFile(r.oldName, r.newName, dir)
 			}
 		}
 	}
 }
 
-func readFileNames(dir string) ([]string, error) {
-	fileNames := make([]string, 0)
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return fileNames, err
-	}
-	for _, f := range files {
-		n := f.Name()
-		if !ignoreRegEx.MatchString(n) {
-			fileNames = append(fileNames, n)
-		}
-	}
-	return fileNames, nil
-}
+
 
 var (
 	fileRegEx   = regexp.MustCompile("^([0-9]+)(-[0-9]+)?(-[A-Za-z][A-Za-z0-9]+)?\\.(jpg|png|gif)$")
 	ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
 )
 
-const noMinor = -99
-
-type fix struct {
-	regex       *regexp.Regexp // Pattern to match to trigger automatic filename fix
-	replacement string         // Format string accepting string parameters for all the tokens in the pattern
-}
+const noMinor = -99				// Indicates a file with no minor version
 
 type renameEntry struct {
 	oldName, newName string
@@ -204,12 +185,7 @@ func prompt(q string) bool {
 	}
 }
 
-func renameFile(oldName, newName string, dirName *string) {
-	oldPath := *dirName + string(os.PathSeparator) + oldName
-	newPath := *dirName + string(os.PathSeparator) + newName
-	fmt.Printf("Renaming %s to %s\n", oldPath, newPath)
-	os.Rename(oldPath, newPath)
-}
+
 
 // seenMajorMinor maps from the major number to the minor number to the filename
 type seenMajorMinor map[int]map[int]string
