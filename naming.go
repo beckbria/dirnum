@@ -10,32 +10,7 @@ type RenameEntry struct {
 
 func ComputeRenames(fileNames []string, unused []int) []RenameEntry {
 	files := parseFileNames(fileNames)
-	renames := make([]RenameEntry, 0)
-
-	if len(files) == 0 {
-		return renames
-	}
-
-	majorDigits, minorDigits := computeDigitCounts(files)
-
-	// Renumber all minor version numbers
-	previousMajor := -1 // Negative number isn't a valid major version
-	for i, f := range files {
-		f.minorDigits = minorDigits[f.major]
-		f.majorDigits = majorDigits
-		if f.major != previousMajor {
-			// This is the first of a series.  Determine if we need to start counting
-			if (i == len(files)-1) || f.major != files[i+1].major {
-				f.minor = NoMinorVersion
-			} else {
-				f.minor = 0
-			}
-			previousMajor = f.major
-		} else {
-			// Claim the next available minor version
-			f.minor = files[i-1].minor + 1
-		}
-	}
+	renumberMinorVersions(files)
 
 	// Fill in gaps in major numbers.
 
@@ -61,15 +36,7 @@ func ComputeRenames(fileNames []string, unused []int) []RenameEntry {
 		}
 	}
 
-	// Determine any files whose names changed.  Add them to the list
-	for _, f := range files {
-		old := f.originalName
-		new := f.String()
-		if old != new {
-			renames = append(renames, RenameEntry{oldName: old, newName: new})
-		}
-	}
-	return renames
+	return changedNames(files)
 }
 
 func parseFileNames(fileNames []string) PFnpSlice {
@@ -88,11 +55,11 @@ func parseFileNames(fileNames []string) PFnpSlice {
 	return files
 }
 
-// Compute the number of digits required by the major/minor version. That is, if the largest major version is 100, 3 digits are required
+// Computes the number of digits required by the major/minor version. That is, if the largest major version is 100, 3 digits are required
 // to represent the major version (in base 10).  For each distinct major version, the number of digits required to represent the minor
 // version are computed.  Thus, "0-0", "0-1", "1-0", "1-1", ..., "1-10" would return [0: 1, 1: 2] because major version 1 requires one
 // digit to represent the minor version while major version 2 requires 2.
-// 
+//
 // We intentionally ignore the edge case where filling the gaps will reduce the number of digits required - if so, the extra digit
 // will likely be required soon enough.  If it's particularly important, running the tool a second time will remove the extra digit.
 func computeDigitCounts(files PFnpSlice) (int, map[int]int) {
@@ -103,6 +70,43 @@ func computeDigitCounts(files PFnpSlice) (int, map[int]int) {
 		minorDigits[f.major] = max(minorDigits[f.major], f.minorDigits)
 	}
 	return majorDigits, minorDigits
+}
+
+// Renumbers the minor version of all files.  If only one file exists for a given major version, then the minor version is cleared.
+// If multiple exist, they are numbered starting at 0.
+func renumberMinorVersions(files PFnpSlice) {
+	majorDigits, minorDigits := computeDigitCounts(files)
+
+	previousMajor := NoVersion
+	for i, f := range files {
+		f.minorDigits = minorDigits[f.major]
+		f.majorDigits = majorDigits
+		if f.major != previousMajor {
+			// This is the first of a series.  Determine if we need to start counting
+			if (i == len(files)-1) || f.major != files[i+1].major {
+				f.minor = NoVersion
+			} else {
+				f.minor = 0
+			}
+			previousMajor = f.major
+		} else {
+			// Claim the next available minor version
+			f.minor = files[i-1].minor + 1
+		}
+	}
+}
+
+// Determine any files whose names changed
+func changedNames(files PFnpSlice) []RenameEntry {
+	renames := make([]RenameEntry, 0)
+	for _, f := range files {
+		old := f.originalName
+		new := f.String()
+		if old != new {
+			renames = append(renames, RenameEntry{oldName: old, newName: new})
+		}
+	}
+	return renames
 }
 
 func max(i, j int) int {

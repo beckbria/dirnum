@@ -40,27 +40,31 @@ func TestInvalidFiles(t *testing.T) {
 func TestRenameFillGaps(t *testing.T) {
 	files := []string{"1.jpg", "2-Foo.jpg", "5-0-Foo.jpg", "5-1.jpg", "5-2.jpg", "6.jpg"}
 	expected := []RenameEntry{
-		RenameEntry{oldName: "5-0-Foo.jpg", newName: "0-0-Foo.jpg"},
-		RenameEntry{oldName: "5-1.jpg", newName: "0-1.jpg"},
-		RenameEntry{oldName: "5-2.jpg", newName: "0-2.jpg"},
-		RenameEntry{oldName: "6.jpg", newName: "3.jpg"},
+		{oldName: "5-0-Foo.jpg", newName: "0-0-Foo.jpg"},
+		{oldName: "5-1.jpg", newName: "0-1.jpg"},
+		{oldName: "5-2.jpg", newName: "0-2.jpg"},
+		{oldName: "6.jpg", newName: "3.jpg"},
 	}
 	assert.ElementsMatch(t, expected, ComputeRenames(files, []int{0, 3, 4}))
+}
+
+func TestRenameFillGapsEmpty(t *testing.T) {
+	assert.ElementsMatch(t, []RenameEntry{}, ComputeRenames([]string{}, []int{}))
 }
 
 func TestRenameMajorVersionDigits(t *testing.T) {
 	files := []string{"0.jpg", "1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg", "8.jpg", "9.jpg", "10.jpg"}
 	expected := []RenameEntry{
-		RenameEntry{oldName: "0.jpg", newName: "00.jpg"},
-		RenameEntry{oldName: "1.jpg", newName: "01.jpg"},
-		RenameEntry{oldName: "2.jpg", newName: "02.jpg"},
-		RenameEntry{oldName: "3.jpg", newName: "03.jpg"},
-		RenameEntry{oldName: "4.jpg", newName: "04.jpg"},
-		RenameEntry{oldName: "5.jpg", newName: "05.jpg"},
-		RenameEntry{oldName: "6.jpg", newName: "06.jpg"},
-		RenameEntry{oldName: "7.jpg", newName: "07.jpg"},
-		RenameEntry{oldName: "8.jpg", newName: "08.jpg"},
-		RenameEntry{oldName: "9.jpg", newName: "09.jpg"},
+		{oldName: "0.jpg", newName: "00.jpg"},
+		{oldName: "1.jpg", newName: "01.jpg"},
+		{oldName: "2.jpg", newName: "02.jpg"},
+		{oldName: "3.jpg", newName: "03.jpg"},
+		{oldName: "4.jpg", newName: "04.jpg"},
+		{oldName: "5.jpg", newName: "05.jpg"},
+		{oldName: "6.jpg", newName: "06.jpg"},
+		{oldName: "7.jpg", newName: "07.jpg"},
+		{oldName: "8.jpg", newName: "08.jpg"},
+		{oldName: "9.jpg", newName: "09.jpg"},
 	}
 	assert.ElementsMatch(t, expected, ComputeRenames(files, []int{}))
 }
@@ -68,19 +72,19 @@ func TestRenameMajorVersionDigits(t *testing.T) {
 func TestRenameMinorVersionDigits(t *testing.T) {
 	files := []string{"0.jpg", "1-0.jpg", "2-1.jpg", "2-3.jpg", "3-0.jpg", "3-1.jpg", "3-2.jpg", "3-3.jpg", "3-4.jpg", "3-5.jpg", "3-6.jpg", "3-7.jpg", "3-8.jpg", "3-9.jpg", "3-10.jpg"}
 	expected := []RenameEntry{
-		RenameEntry{oldName: "1-0.jpg", newName: "1.jpg"},
-		RenameEntry{oldName: "2-1.jpg", newName: "2-0.jpg"},
-		RenameEntry{oldName: "2-3.jpg", newName: "2-1.jpg"},
-		RenameEntry{oldName: "3-0.jpg", newName: "3-00.jpg"},
-		RenameEntry{oldName: "3-1.jpg", newName: "3-01.jpg"},
-		RenameEntry{oldName: "3-2.jpg", newName: "3-02.jpg"},
-		RenameEntry{oldName: "3-3.jpg", newName: "3-03.jpg"},
-		RenameEntry{oldName: "3-4.jpg", newName: "3-04.jpg"},
-		RenameEntry{oldName: "3-5.jpg", newName: "3-05.jpg"},
-		RenameEntry{oldName: "3-6.jpg", newName: "3-06.jpg"},
-		RenameEntry{oldName: "3-7.jpg", newName: "3-07.jpg"},
-		RenameEntry{oldName: "3-8.jpg", newName: "3-08.jpg"},
-		RenameEntry{oldName: "3-9.jpg", newName: "3-09.jpg"},
+		{oldName: "1-0.jpg", newName: "1.jpg"},
+		{oldName: "2-1.jpg", newName: "2-0.jpg"},
+		{oldName: "2-3.jpg", newName: "2-1.jpg"},
+		{oldName: "3-0.jpg", newName: "3-00.jpg"},
+		{oldName: "3-1.jpg", newName: "3-01.jpg"},
+		{oldName: "3-2.jpg", newName: "3-02.jpg"},
+		{oldName: "3-3.jpg", newName: "3-03.jpg"},
+		{oldName: "3-4.jpg", newName: "3-04.jpg"},
+		{oldName: "3-5.jpg", newName: "3-05.jpg"},
+		{oldName: "3-6.jpg", newName: "3-06.jpg"},
+		{oldName: "3-7.jpg", newName: "3-07.jpg"},
+		{oldName: "3-8.jpg", newName: "3-08.jpg"},
+		{oldName: "3-9.jpg", newName: "3-09.jpg"},
 	}
 	assert.ElementsMatch(t, expected, ComputeRenames(files, []int{}))
 }

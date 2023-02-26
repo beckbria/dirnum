@@ -7,7 +7,7 @@ import (
 	"regexp"
 )
 
-var ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
+var ignoreRegEx = regexp.MustCompile(`^Thumbs\.db$`)
 
 func RenameFile(oldName, newName string, dirName *string) {
 	oldPath := *dirName + string(os.PathSeparator) + oldName
