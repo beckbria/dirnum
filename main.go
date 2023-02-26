@@ -30,36 +30,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	files, err := ioutil.ReadDir(*dir)
+	fileNames, err := readFileNames(*dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fileNames := []string{}
-	for _, f := range files {
-		n := f.Name()
-		if !ignoreRegEx.MatchString(n) {
-			fileNames = append(fileNames, n)
-		}
-	}
 
 	errors, unused := validate(fileNames)
+	// Display errors for any malformed filenames
 	if quiet != nil && !*quiet {
-		if len(errors) == 0 {
-			fmt.Println("No errors found")
-		} else {
-			filesWithErrors := []string{}
-			for f := range errors {
-				filesWithErrors = append(filesWithErrors, f)
-			}
-			sort.Strings(filesWithErrors)
-			for _, f := range filesWithErrors {
-				for _, e := range errors[f] {
-					fmt.Printf("\"%s\": %s\n", f, e)
-				}
-			}
-		}
+		fmt.Println(errors)
 	}
 
+	// Determine file name changes
 	if renumber != nil && *renumber {
 		ren := suggestedRenames(fileNames, unused)
 		fmt.Println("\nProposed renames: ")
@@ -72,6 +54,21 @@ func main() {
 			}
 		}
 	}
+}
+
+func readFileNames(dir string) ([]string, error) {
+	fileNames := make([]string, 0)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return fileNames, err
+	}
+	for _, f := range files {
+		n := f.Name()
+		if !ignoreRegEx.MatchString(n) {
+			fileNames = append(fileNames, n)
+		}
+	}
+	return fileNames, nil
 }
 
 var (
@@ -102,10 +99,9 @@ func suggestedRenames(fileNames []string, unused []int) []renameEntry {
 	for _, f := range fileNames {
 		n, err := ParseFileName(f)
 		if err == nil {
-			// Don't try to rename files which aren't named correctly
+			// Don't try to rename files which aren't named correctly.  Errors are displayed
+			// before this function and controlled by the quiet flag.
 			files = append(files, n)
-		} else {
-			fmt.Printf(err.Error())
 		}
 	}
 
@@ -236,6 +232,25 @@ func (v validationErrors) add(filename, err string) {
 		v[filename] = []string{}
 	}
 	v[filename] = append(v[filename], err)
+}
+
+func (errors validationErrors) String() string {
+	if len(errors) == 0 {
+		return "No errors found"
+	} else {
+		var sb strings.Builder
+		filesWithErrors := []string{}
+		for f := range errors {
+			filesWithErrors = append(filesWithErrors, f)
+		}
+		sort.Strings(filesWithErrors)
+		for _, f := range filesWithErrors {
+			for _, e := range errors[f] {
+				sb.WriteString(fmt.Sprintf("\"%s\": %s\n", f, e))
+			}
+		}
+		return sb.String()
+	}
 }
 
 // Returns any errors found and a list of any skipped major version numbers
