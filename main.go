@@ -253,17 +253,25 @@ func suggestedRenames(fileNames []string, unused []int) []renameEntry {
 	}
 
 	// Fill in gaps in major numbers.
-	// Keep track of the highest unmodified major version number
+
+	// First, backtrack to determine how many entries we need to fill
 	majorIdx := len(files) - 1
-	for len(unused) > 0 {
-		firstUnused := unused[0]
-		unused = unused[1:]
-		if firstUnused > files[majorIdx].major {
+	unusedIdx := 0
+	for ; unusedIdx < len(unused) && majorIdx > 0; unusedIdx++ {
+		if unused[unusedIdx] > files[majorIdx].major {
 			// We've filled in to a continuous loop
 			break
 		}
+		majorIdx--
+	}
+
+	// Now rename files in order
+	for len(unused) > 0 && majorIdx < len(files) {
+		firstUnused := unused[0]
+		unused = unused[1:]
+
 		// Change the major version to the unused value
-		for oldMajor := files[majorIdx].major; majorIdx >= 0 && files[majorIdx].major == oldMajor; majorIdx-- {
+		for oldMajor := files[majorIdx].major; majorIdx < len(files) && files[majorIdx].major == oldMajor; majorIdx++ {
 			files[majorIdx].major = firstUnused
 		}
 	}

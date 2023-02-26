@@ -40,10 +40,10 @@ func TestInvalidFiles(t *testing.T) {
 func TestRenameFillGaps(t *testing.T) {
 	files := []string{"1.jpg", "2-Foo.jpg", "5-0-Foo.jpg", "5-1.jpg", "5-2.jpg", "6.jpg"}
 	expected := []renameEntry{
-		renameEntry{oldName: "5-0-Foo.jpg", newName: "3-0-Foo.jpg"},
-		renameEntry{oldName: "5-1.jpg", newName: "3-1.jpg"},
-		renameEntry{oldName: "5-2.jpg", newName: "3-2.jpg"},
-		renameEntry{oldName: "6.jpg", newName: "0.jpg"},
+		renameEntry{oldName: "5-0-Foo.jpg", newName: "0-0-Foo.jpg"},
+		renameEntry{oldName: "5-1.jpg", newName: "0-1.jpg"},
+		renameEntry{oldName: "5-2.jpg", newName: "0-2.jpg"},
+		renameEntry{oldName: "6.jpg", newName: "3.jpg"},
 	}
 	assert.ElementsMatch(t, expected, suggestedRenames(files, []int{0, 3, 4}))
 }
