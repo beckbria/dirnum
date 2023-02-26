@@ -21,10 +21,8 @@ import (
 
 func main() {
 	dir := flag.String("dir", "", "The directory to analyze (mandatory)")
-	af := flag.Bool("fix", false, "Automatically fix simple typos in file names")
-	showUnused := flag.Bool("unused", false, "Print a list of major numbers missing from the sequence")
 	quiet := flag.Bool("quiet", false, "Do not print validation errors encountered")
-	renumber := flag.Bool("renumber", false, "Automatically renumber files to fill in gaps in major numbers")
+	renumber := flag.Bool("renumber", true, "Renumber files to fill in gaps in major numbers")
 	flag.Parse()
 
 	if dir == nil || len(*dir) < 1 {
@@ -38,13 +36,9 @@ func main() {
 		log.Fatal(err)
 	}
 	fileNames := []string{}
-	fix := af != nil && *af
 	for _, f := range files {
 		n := f.Name()
 		if !ignoreRegEx.MatchString(n) {
-			if fix {
-				n = autoFix(n, dir)
-			}
 			fileNames = append(fileNames, n)
 		}
 	}
@@ -67,11 +61,6 @@ func main() {
 		}
 	}
 
-	if showUnused != nil && *showUnused {
-		fmt.Print("Unused major numbers: ")
-		fmt.Println(unused)
-	}
-
 	if renumber != nil && *renumber {
 		ren := suggestedRenames(fileNames, unused)
 		fmt.Println("\nProposed renames: ")
@@ -89,10 +78,6 @@ func main() {
 var (
 	fileRegEx   = regexp.MustCompile("^([0-9]+)(-[0-9]+)?(-[A-Za-z][A-Za-z0-9]+)?\\.(jpg|png|gif)$")
 	ignoreRegEx = regexp.MustCompile("^Thumbs\\.db$")
-	autoFixes   = []*fix{
-		newFix("^([0-9][0-9][0-9][0-9])_([0-9]+)\\.(jpg|png|gif)$", "%s-%s.%s"),
-		newFix("^([0-9][0-9][0-9][0-9]).JPG$", "%s.jpg"),
-		newFix("^([0-9][0-9][0-9][0-9])-([0-9]+).JPG$", "%s-%s.jpg")}
 )
 
 const noMinor = -99
@@ -316,34 +301,6 @@ func renameFile(oldName, newName string, dirName *string) {
 	newPath := *dirName + string(os.PathSeparator) + newName
 	fmt.Printf("Renaming %s to %s\n", oldPath, newPath)
 	os.Rename(oldPath, newPath)
-}
-
-func autoFix(oldName string, dirName *string) string {
-	for _, f := range autoFixes {
-		tokens := f.regex.FindStringSubmatch(oldName)
-		if tokens == nil {
-			continue
-		}
-		t := tokens[1:]
-		t2 := []interface{}{}
-		for _, s := range t {
-			t2 = append(t2, interface{}(s))
-		}
-		newName := fmt.Sprintf(f.replacement, t2...)
-		renameFile(oldName, newName, dirName)
-		return newName
-	}
-	// This isn't a file we can fix
-	return oldName
-}
-
-func newFix(pattern, replacement string) *fix {
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		log.Fatalf("Invalid pattern: %s", pattern)
-	}
-	f := fix{regex: re, replacement: replacement}
-	return &f
 }
 
 // seenMajorMinor maps from the major number to the minor number to the filename
