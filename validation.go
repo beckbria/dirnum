@@ -7,7 +7,14 @@ import (
 	"strings"
 )
 
-var fileRegEx = regexp.MustCompile(`^([0-9]+)(-[0-9]+)?(-[A-Za-z][A-Za-z0-9]+)?\.(jpg|png|gif)$`)
+const (
+	majorRegex      = `^([0-9]+)`
+	minorRegex      = `(-[0-9]+)?`
+	descriptorRegex = `(-[A-Za-z][A-Za-z0-9 ,]+)?`
+	extensionRegex  = `\.(jpg|png|gif)`
+)
+
+var fileRegEx = regexp.MustCompile(`^` + majorRegex + minorRegex + descriptorRegex + extensionRegex + `$`)
 
 type ValidationErrors map[string][]string
 

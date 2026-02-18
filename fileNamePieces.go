@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -69,6 +70,22 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 		originalName: f,
 	}
 	return &name, nil
+}
+
+func ParseFileNames(fileNames []string) PFnpSlice {
+	files := make(PFnpSlice, 0)
+	for _, f := range fileNames {
+		n, err := ParseFileName(f)
+		if err == nil {
+			// Don't try to rename files which aren't named correctly.  Errors are displayed
+			// before this function and controlled by the quiet flag.
+			files = append(files, n)
+		}
+	}
+
+	// Sort the list by major/minor version
+	sort.Sort(files)
+	return files
 }
 
 // PFnpSlice represents a set of file names that can be sorted by major+minor version

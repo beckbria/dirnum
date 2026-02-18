@@ -19,6 +19,7 @@ func main() {
 	dir := flag.String("dir", "", "The directory to analyze (mandatory)")
 	quiet := flag.Bool("quiet", false, "Do not print validation errors encountered")
 	renumber := flag.Bool("renumber", true, "Renumber files to fill in gaps in major numbers")
+	stats := flag.Bool("stats", false, "Generate statistics on file naming")
 	flag.Parse()
 
 	if dir == nil || len(*dir) < 1 {
@@ -41,14 +42,25 @@ func main() {
 	// Determine file name changes
 	if renumber != nil && *renumber {
 		ren := ComputeRenames(fileNames, unused)
-		fmt.Println("\nProposed renames: ")
-		for _, r := range ren {
-			fmt.Printf("%s => %s\n", r.oldName, r.newName)
-		}
-		if prompt("Rename files?") {
+		if len(ren) > 0 {
+			fmt.Println("\nProposed renames: ")
 			for _, r := range ren {
-				RenameFile(r.oldName, r.newName, dir)
+				fmt.Printf("%s => %s\n", r.oldName, r.newName)
 			}
+			if prompt("Rename files?") {
+				for _, r := range ren {
+					RenameFile(r.oldName, r.newName, dir)
+				}
+			}
+		} else {
+			fmt.Println("\nNo proposed renamed.")
+		}
+	}
+
+	if stats != nil && *stats {
+		fmt.Println("")
+		for _, s := range ComputeStats(fileNames) {
+			fmt.Printf("%d\t%s\n", s.count, s.tag)
 		}
 	}
 }

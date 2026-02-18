@@ -1,15 +1,11 @@
 package main
 
-import (
-	"sort"
-)
-
 type RenameEntry struct {
 	oldName, newName string
 }
 
 func ComputeRenames(fileNames []string, unused []int) []RenameEntry {
-	files := parseFileNames(fileNames)
+	files := ParseFileNames(fileNames)
 	renumberMinorVersions(files)
 
 	// Fill in gaps in major numbers.
@@ -45,22 +41,6 @@ func ComputeRenames(fileNames []string, unused []int) []RenameEntry {
 	}
 
 	return changedNames(files)
-}
-
-func parseFileNames(fileNames []string) PFnpSlice {
-	files := make(PFnpSlice, 0)
-	for _, f := range fileNames {
-		n, err := ParseFileName(f)
-		if err == nil {
-			// Don't try to rename files which aren't named correctly.  Errors are displayed
-			// before this function and controlled by the quiet flag.
-			files = append(files, n)
-		}
-	}
-
-	// Sort the list by major/minor version
-	sort.Sort(files)
-	return files
 }
 
 // Computes the number of digits required by the major/minor version. That is, if the largest major version is 100, 3 digits are required
