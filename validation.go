@@ -59,7 +59,7 @@ func (s seenMajorMinor) add(major, minor int, file string) error {
 }
 
 // Returns any errors found and a list of any skipped major version numbers
-func ValidateFileNames(files []string) (ValidationErrors, []int) {
+func ValidateFileNames(files []string, ignoreMajor bool) (ValidationErrors, []int) {
 	errors := make(ValidationErrors)
 	seen := make(seenMajorMinor)
 	for _, f := range files {
@@ -89,7 +89,7 @@ func ValidateFileNames(files []string) (ValidationErrors, []int) {
 	}
 	sort.Ints(major)
 
-	majErrors, unused := validateMajor(major)
+	majErrors, unused := validateMajor(major, ignoreMajor)
 	for n, e := range majErrors {
 		f := ""
 		for _, fileName := range seen[n] {
@@ -117,13 +117,15 @@ func ValidateFileNames(files []string) (ValidationErrors, []int) {
 }
 
 // Returns an map from major version number to error format string which accepts the file name
-func validateMajor(nums []int) (map[int]string, []int) {
+func validateMajor(nums []int, ignoreMajor bool) (map[int]string, []int) {
 	unused := []int{}
 	errors := make(map[int]string)
 	prev := -1
 	for _, n := range nums {
 		if n != (prev + 1) {
-			errors[n] = fmt.Sprintf("Numbering jumped from %d to %d: %%s", prev, n)
+			if !ignoreMajor {
+				errors[n] = fmt.Sprintf("Numbering jumped from %d to %d: %%s", prev, n)
+			}
 			start := prev + 1
 			if start < 0 {
 				start = 0
