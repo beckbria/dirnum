@@ -69,6 +69,9 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 		extension:    tokens[4],
 		originalName: f,
 	}
+	if name.extension == "jpeg" {
+		name.extension = "jpg"
+	}
 	return &name, nil
 }
 

@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	majorRegex      = `^([0-9]+)`
+	majorRegex      = `([0-9]+)`
 	minorRegex      = `(-[0-9]+)?`
-	descriptorRegex = `(-[A-Za-z][A-Za-z0-9 ,]+)?`
-	extensionRegex  = `\.(jpg|png|gif)`
+	descriptorRegex = `(-[A-Za-z][A-Za-z0-9_' ,]+)?`
+	extensionRegex  = `\.(jpg|gif|jpeg)`
 )
 
 var fileRegEx = regexp.MustCompile(`^` + majorRegex + minorRegex + descriptorRegex + extensionRegex + `$`)
@@ -28,20 +28,20 @@ func (v ValidationErrors) add(filename, err string) {
 func (errors ValidationErrors) String() string {
 	if len(errors) == 0 {
 		return "No errors found"
-	} else {
-		var sb strings.Builder
-		filesWithErrors := []string{}
-		for f := range errors {
-			filesWithErrors = append(filesWithErrors, f)
-		}
-		sort.Strings(filesWithErrors)
-		for _, f := range filesWithErrors {
-			for _, e := range errors[f] {
-				sb.WriteString(fmt.Sprintf("\"%s\": %s\n", f, e))
-			}
-		}
-		return sb.String()
 	}
+
+	var sb strings.Builder
+	filesWithErrors := []string{}
+	for f := range errors {
+		filesWithErrors = append(filesWithErrors, f)
+	}
+	sort.Strings(filesWithErrors)
+	for _, f := range filesWithErrors {
+		for _, e := range errors[f] {
+			sb.WriteString(fmt.Sprintf("\"%s\": %s\n", f, e))
+		}
+	}
+	return sb.String()
 }
 
 // seenMajorMinor maps from the major number to the minor number to the filename
@@ -59,7 +59,7 @@ func (s seenMajorMinor) add(major, minor int, file string) error {
 }
 
 // Returns any errors found and a list of any skipped major version numbers
-func ValidateFileNames(files []string, ignoreMajor bool) (ValidationErrors, []int) {
+func ValidateFileNames(files []string, ignoreMajor, ignoreMinorZero bool) (ValidationErrors, []int) {
 	errors := make(ValidationErrors)
 	seen := make(seenMajorMinor)
 	for _, f := range files {
@@ -83,7 +83,7 @@ func ValidateFileNames(files []string, ignoreMajor bool) (ValidationErrors, []in
 		}
 	}
 
-	major := []int{}
+	major := make([]int, 0, len(seen))
 	for m := range seen {
 		major = append(major, m)
 	}
@@ -100,12 +100,12 @@ func ValidateFileNames(files []string, ignoreMajor bool) (ValidationErrors, []in
 	}
 
 	for maj, mins := range seen {
-		minor := []int{}
+		minor := make([]int, 0, len(mins))
 		for m := range mins {
 			minor = append(minor, m)
 		}
 		sort.Ints(minor)
-		minorErrors := validateMinor(minor)
+		minorErrors := validateMinor(minor, ignoreMinorZero)
 		for min, e := range minorErrors {
 			f := seen[maj][min]
 			errors.add(f, fmt.Sprintf(e, f))
@@ -141,7 +141,7 @@ func validateMajor(nums []int, ignoreMajor bool) (map[int]string, []int) {
 }
 
 // Returns an map from minor version number to error format string which accepts the file name
-func validateMinor(nums []int) map[int]string {
+func validateMinor(nums []int, ignoreMinorZero bool) map[int]string {
 	errors := make(map[int]string)
 	if len(nums) == 1 {
 		if nums[0] != NoVersion {
@@ -150,14 +150,20 @@ func validateMinor(nums []int) map[int]string {
 	} else if len(nums) > 1 {
 		prev := -1
 		for _, n := range nums {
-			if n != (prev + 1) {
+			if n != NoVersion && n != (prev+1) {
 				if prev == -1 || prev == NoVersion {
-					errors[n] = "Minor version numbering must start with 0: %s"
+					if !ignoreMinorZero {
+						errors[n] = "Minor version numbering must start with 0: %s"
+					}
 				} else {
 					errors[n] = fmt.Sprintf("Minor numbering jumped from %d to %d: %%s", prev, n)
 				}
 			}
 			prev = n
+			// In the case of "0-Foo, 0-1" we do not want a duplicate error on both 1 (which didn't start at 0) and 0 (which comes alphabetically after)
+			if n == NoVersion {
+				prev = 0
+			}
 		}
 	}
 

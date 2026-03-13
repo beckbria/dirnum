@@ -18,7 +18,7 @@ func TestValidFiles(t *testing.T) {
 		"0004-bar.gif"}
 
 	noErrors := make(ValidationErrors)
-	err, _ := ValidateFileNames(valid, false)
+	err, _ := ValidateFileNames(valid, false, false)
 	assert.Equal(t, noErrors, err)
 }
 
@@ -31,7 +31,7 @@ func TestInvalidFiles(t *testing.T) {
 		"0000foo.jpg"}
 
 	for _, i := range invalid {
-		err, _ := ValidateFileNames([]string{i}, false)
+		err, _ := ValidateFileNames([]string{i}, false, false)
 		_, found := err[i]
 		assert.Equal(t, true, found, i)
 	}
@@ -57,7 +57,7 @@ func TestMissingZero(t *testing.T) {
 		"0.jpg": []string{"Minor version numbering must start with 0: 0.jpg"},
 	}
 
-	errors, unused := ValidateFileNames(files, true)
+	errors, unused := ValidateFileNames(files, true, false)
 	assert.Equal(t, expectedErrors, errors)
 	assert.ElementsMatch(t, expectedRenames, ComputeRenames(files, unused))
 }
@@ -67,7 +67,12 @@ func TestMissingZeroWithDescriptor(t *testing.T) {
 	expectedRenames := []RenameEntry{
 		{oldName: "0-Bar Baz.jpg", newName: "0-0-Bar Baz.jpg"},
 	}
-	_, unused := ValidateFileNames(files, true)
+	expectedErrors := ValidationErrors{
+		"0-Bar Baz.jpg": []string{"Minor version numbering must start with 0: 0-Bar Baz.jpg"},
+	}
+
+	errors, unused := ValidateFileNames(files, true, false)
+	assert.Equal(t, expectedErrors, errors)
 	assert.ElementsMatch(t, expectedRenames, ComputeRenames(files, unused))
 }
 

@@ -19,6 +19,7 @@ func main() {
 	dir := flag.String("dir", "", "The directory to analyze (mandatory)")
 	quiet := flag.Bool("quiet", false, "Do not print validation errors encountered")
 	ignoreMajor := flag.Bool("ignoremajor", true, "Do not print warnings for skips in the major version numbering")
+	ignoreMinorZero := flag.Bool("ignoreminorzero", true, "Do not print warnings for minor numbering skipping zero")
 	renumber := flag.Bool("renumber", true, "Renumber files to fill in gaps in major numbers")
 	stats := flag.Bool("stats", false, "Generate statistics on file naming")
 	flag.Parse()
@@ -34,7 +35,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	errors, unused := ValidateFileNames(fileNames, *ignoreMajor)
+	errors, unused := ValidateFileNames(fileNames, *ignoreMajor, *ignoreMinorZero)
 	// Display errors for any malformed filenames
 	if quiet != nil && !*quiet {
 		fmt.Println(errors)
