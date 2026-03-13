@@ -24,7 +24,22 @@ func main() {
 	stats := flag.Bool("stats", false, "Generate statistics on file naming")
 	statsSort := flag.String("stats-sort", "alpha", "Sort order for stats: 'alpha' (alphabetical) or 'freq' (frequency)")
 	statsNames := flag.Bool("stats-names", false, "Print tags and the major versions where they appear instead of counts")
+	exportTags := flag.Bool("export-tags", false, "Export files into subdirectories based on their tags")
+	exportPrefix := flag.String("export-prefix", "", "Optional prefix to filter tags for export")
+	exportMinCount := flag.Int("export-min-count", 0, "Only export tags that appear at least this many times")
 	flag.Parse()
+
+	if *exportTags {
+		isRenumberSet := false
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == "renumber" {
+				isRenumberSet = true
+			}
+		})
+		if !isRenumberSet {
+			*renumber = false
+		}
+	}
 
 	if *dir == "" {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", os.Args[0])
@@ -58,6 +73,13 @@ func main() {
 			}
 		} else {
 			fmt.Println("\nNo proposed renames.")
+		}
+	}
+
+	if *exportTags {
+		fmt.Println("")
+		if err := ExportTags(*dir, fileNames, *exportPrefix, *exportMinCount); err != nil {
+			log.Fatal(err)
 		}
 	}
 
