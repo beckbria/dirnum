@@ -22,6 +22,8 @@ func main() {
 	ignoreMinorZero := flag.Bool("ignoreminorzero", true, "Do not print warnings for minor numbering skipping zero")
 	renumber := flag.Bool("renumber", true, "Renumber files to fill in gaps in major numbers")
 	stats := flag.Bool("stats", false, "Generate statistics on file naming")
+	statsSort := flag.String("stats-sort", "alpha", "Sort order for stats: 'alpha' (alphabetical) or 'freq' (frequency)")
+	statsNames := flag.Bool("stats-names", false, "Print tags and the major versions where they appear instead of counts")
 	flag.Parse()
 
 	if *dir == "" {
@@ -61,8 +63,17 @@ func main() {
 
 	if *stats {
 		fmt.Println("")
-		for _, s := range ComputeStats(fileNames) {
-			fmt.Printf("%d\t%s\n", s.count, s.tag)
+		computedStats := ComputeStats(fileNames)
+		if *statsSort == "freq" {
+			SortStatsByFrequency(computedStats)
+		} else {
+			SortStatsAlphabetical(computedStats)
+		}
+
+		if *statsNames {
+			PrintTagMajorVersions(computedStats)
+		} else {
+			PrintTagCounts(computedStats)
 		}
 	}
 }

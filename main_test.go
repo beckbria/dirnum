@@ -182,3 +182,57 @@ func TestRenameMinorVersionDigits(t *testing.T) {
 	}
 	assert.ElementsMatch(t, expected, ComputeRenames(files, []int{}))
 }
+
+func TestComputeStats(t *testing.T) {
+	files := []string{
+		"0-Foo.jpg",
+		"1-0-Bar.jpg",
+		"1-1-Foo, Baz.jpg",
+		"2.jpg", // No stats
+		"foo.jpg", // Invalid
+	}
+	expected := []MetadataStat{
+		{tag: "Foo", files: []string{"0-Foo.jpg", "1-1-Foo, Baz.jpg"}},
+		{tag: "Bar", files: []string{"1-0-Bar.jpg"}},
+		{tag: "Baz", files: []string{"1-1-Foo, Baz.jpg"}},
+	}
+	
+	actual := ComputeStats(files)
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestSortStatsAlphabetical(t *testing.T) {
+	stats := []MetadataStat{
+		{tag: "Foo", files: []string{"1.jpg", "2.jpg"}},
+		{tag: "Bar", files: []string{"3.jpg"}},
+		{tag: "Apple", files: []string{"4.jpg"}},
+	}
+	
+	SortStatsAlphabetical(stats)
+	
+	expected := []MetadataStat{
+		{tag: "Apple", files: []string{"4.jpg"}},
+		{tag: "Bar", files: []string{"3.jpg"}},
+		{tag: "Foo", files: []string{"1.jpg", "2.jpg"}},
+	}
+	assert.Equal(t, expected, stats)
+}
+
+func TestSortStatsByFrequency(t *testing.T) {
+	stats := []MetadataStat{
+		{tag: "Apple", files: []string{"4.jpg"}},
+		{tag: "Foo", files: []string{"1.jpg", "2.jpg"}},
+		{tag: "Bar", files: []string{"3.jpg"}},
+		{tag: "Zeta", files: []string{"5.jpg", "6.jpg"}},
+	}
+	
+	SortStatsByFrequency(stats)
+	
+	expected := []MetadataStat{
+		{tag: "Foo", files: []string{"1.jpg", "2.jpg"}},
+		{tag: "Zeta", files: []string{"5.jpg", "6.jpg"}},
+		{tag: "Apple", files: []string{"4.jpg"}},
+		{tag: "Bar", files: []string{"3.jpg"}},
+	}
+	assert.Equal(t, expected, stats)
+}
