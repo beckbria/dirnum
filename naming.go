@@ -1,5 +1,7 @@
 package main
 
+import "strconv"
+
 type RenameEntry struct {
 	oldName, newName string
 }
@@ -93,4 +95,76 @@ func changedNames(files PFnpSlice) []RenameEntry {
 		}
 	}
 	return renames
+}
+
+// Computes the renames needed to append one major group to another.
+func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
+	files := ParseFileNames(fileNames)
+	
+	ontoMaxMinor := NoVersion
+	hasOntoFiles := false
+	
+	// Find the max minor version in the 'onto' group
+	for _, f := range files {
+		if f.major == onto {
+			hasOntoFiles = true
+			if f.minor > ontoMaxMinor {
+				ontoMaxMinor = f.minor
+			}
+		}
+	}
+	
+	if hasOntoFiles {
+		if ontoMaxMinor == NoVersion {
+			// If the onto group has only NoVersion files, we will number the existing one(s) as 0, and start appending at 1
+			for _, f := range files {
+				if f.major == onto {
+					f.minor = 0
+					// Once we have a minor version, we need some minorDigits. We'll set it to 1, and let computeDigitCounts adjust if needed
+					f.minorDigits = 1
+				}
+			}
+			ontoMaxMinor = 0
+		}
+	} else {
+		ontoMaxMinor = -1
+	}
+	
+	// 'from' files that need to be appended
+	var fromFiles []*FileNamePieces
+	for _, f := range files {
+		if f.major == from {
+			fromFiles = append(fromFiles, f)
+		}
+	}
+	
+	// Append 'from' files to 'onto'
+	// Minor numbers are sequentially assigned starting after ontoMaxMinor
+	for _, f := range fromFiles {
+		ontoMaxMinor++
+		f.major = onto
+		f.minor = ontoMaxMinor
+		f.majorDigits = len(strconv.Itoa(f.major))
+		f.minorDigits = len(strconv.Itoa(f.minor))
+	}
+	
+	// Now all files have correct major and minor numbers.
+	// We need to re-sort the files so that `computeDigitCounts` and `changedNames` process things in the correct order,
+	// though `computeDigitCounts` actually doesn't care about order. We'll leave it since `files` are already collected.
+	// Oh wait, `changedNames` doesn't strictly depend on order, it just compares `originalName` to `f.String()`.
+
+	// Recompute and apply the required padding digits for major and minor
+	majorDigits, minorDigits := computeDigitCounts(files)
+	var relevantFiles PFnpSlice
+	for _, f := range files {
+		f.majorDigits = majorDigits
+		f.minorDigits = minorDigits[f.major]
+		// After changing 'from' files to 'onto', any file with an originally 'from' or 'onto'
+		// major number will now have f.major == onto. We restrict renames to only these files.
+		if f.major == onto {
+			relevantFiles = append(relevantFiles, f)
+		}
+	}
+	
+	return changedNames(relevantFiles)
 }

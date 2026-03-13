@@ -236,3 +236,81 @@ func TestSortStatsByFrequency(t *testing.T) {
 	}
 	assert.Equal(t, expected, stats)
 }
+
+func TestAppendBasic(t *testing.T) {
+	files := []string{"1-0.jpg", "1-1.jpg", "2-0.jpg", "2-1.jpg", "2-2.jpg"}
+	// Append 2 onto 1
+	expected := []RenameEntry{
+		{oldName: "2-0.jpg", newName: "1-2.jpg"},
+		{oldName: "2-1.jpg", newName: "1-3.jpg"},
+		{oldName: "2-2.jpg", newName: "1-4.jpg"},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 2, 1))
+}
+
+func TestAppendWithTags(t *testing.T) {
+	files := []string{"1-0-Foo.jpg", "1-1-Bar.jpg", "2-0-Baz.jpg", "2-1.jpg"}
+	// Append 2 onto 1
+	expected := []RenameEntry{
+		{oldName: "2-0-Baz.jpg", newName: "1-2-Baz.jpg"},
+		{oldName: "2-1.jpg", newName: "1-3.jpg"},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 2, 1))
+}
+
+func TestAppendToSingleNoVersion(t *testing.T) {
+	// 1 has no minor version. 2 will be appended.
+	// 1 becomes 1-0, and 2-0 becomes 1-1, etc.
+	files := []string{"1.jpg", "2-0.jpg", "2-1.jpg"}
+	expected := []RenameEntry{
+		{oldName: "1.jpg", newName: "1-0.jpg"},
+		{oldName: "2-0.jpg", newName: "1-1.jpg"},
+		{oldName: "2-1.jpg", newName: "1-2.jpg"},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 2, 1))
+}
+
+func TestAppendToEmpty(t *testing.T) {
+	// 'onto' group doesn't exist yet, we just move 'from' to 'onto'
+	// Minor numbers should start from 0 because NoVersion defaults max to -1, which increments to 0 for the first
+	files := []string{"2-0.jpg", "2-1.jpg", "3-0.jpg"}
+	expected := []RenameEntry{
+		{oldName: "2-0.jpg", newName: "1-0.jpg"},
+		{oldName: "2-1.jpg", newName: "1-1.jpg"},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 2, 1))
+}
+
+func TestAppendDigitsResized(t *testing.T) {
+	// 1 has 9 items (0-8), when we append 2, it will exceed 9 items, requiring 2 digits for minor version.
+	// So 1-0 becomes 1-00, ..., 1-8 becomes 1-08, and the appended ones become 1-09, 1-10, etc.
+	files := []string{
+		"1-0.jpg", "1-1.jpg", "1-2.jpg", "1-3.jpg", "1-4.jpg", "1-5.jpg", "1-6.jpg", "1-7.jpg", "1-8.jpg",
+		"2-0.jpg", "2-1.jpg",
+	}
+	expected := []RenameEntry{
+		{oldName: "1-0.jpg", newName: "1-00.jpg"},
+		{oldName: "1-1.jpg", newName: "1-01.jpg"},
+		{oldName: "1-2.jpg", newName: "1-02.jpg"},
+		{oldName: "1-3.jpg", newName: "1-03.jpg"},
+		{oldName: "1-4.jpg", newName: "1-04.jpg"},
+		{oldName: "1-5.jpg", newName: "1-05.jpg"},
+		{oldName: "1-6.jpg", newName: "1-06.jpg"},
+		{oldName: "1-7.jpg", newName: "1-07.jpg"},
+		{oldName: "1-8.jpg", newName: "1-08.jpg"},
+		{oldName: "2-0.jpg", newName: "1-09.jpg"},
+		{oldName: "2-1.jpg", newName: "1-10.jpg"},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 2, 1))
+}
+
+func TestAppendIgnoreOtherFiles(t *testing.T) {
+	// 2.jpeg would normally be renamed to 2.jpg when naming normalizes extensions.
+	// We verify that since major 2 is not part of the append operation, it gets ignored.
+	files := []string{"1.jpg", "2.jpeg", "3.jpg"}
+	expected := []RenameEntry{
+		{oldName: "1.jpg", newName: "1-0.jpg"},
+		{oldName: "3.jpg", newName: "1-1.jpg"},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 3, 1))
+}

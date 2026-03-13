@@ -27,6 +27,8 @@ func main() {
 	exportTags := flag.Bool("export-tags", false, "Export files into subdirectories based on their tags")
 	exportPrefix := flag.String("export-prefix", "", "Optional prefix to filter tags for export")
 	exportMinCount := flag.Int("export-min-count", 0, "Only export tags that appear at least this many times")
+	appendFrom := flag.Int("append-from", -1, "The major version number to move files from")
+	appendOnto := flag.Int("append-onto", -1, "The major version number to append files onto")
 	flag.Parse()
 
 	if *exportTags {
@@ -39,6 +41,14 @@ func main() {
 		if !isRenumberSet {
 			*renumber = false
 		}
+	}
+
+	performAppend := *appendFrom >= 0 && *appendOnto >= 0
+
+	if performAppend {
+		// If append is executing, disable standard renumbering unless explicitly asked?
+		// Usually we skip standard renumbering to avoid conflating the operations
+		*renumber = false
 	}
 
 	if *dir == "" {
@@ -73,6 +83,23 @@ func main() {
 			}
 		} else {
 			fmt.Println("\nNo proposed renames.")
+		}
+	}
+
+	if performAppend {
+		ren := ComputeAppend(fileNames, *appendFrom, *appendOnto)
+		if len(ren) > 0 {
+			fmt.Printf("\nProposed append from %d onto %d:\n", *appendFrom, *appendOnto)
+			for _, r := range ren {
+				fmt.Printf("%s => %s\n", r.oldName, r.newName)
+			}
+			if prompt("Rename files?") {
+				for _, r := range ren {
+					RenameFile(r.oldName, r.newName, *dir)
+				}
+			}
+		} else {
+			fmt.Println("\nNo proposed renames for append.")
 		}
 	}
 
