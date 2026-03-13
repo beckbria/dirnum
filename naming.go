@@ -24,8 +24,6 @@ func ComputeRenames(fileNames []string, unused []int) []RenameEntry {
 		majorIdx--
 	}
 	// Undo our last shift - it's the one that pushed us too far
-	// TODO: This is a bit of a code smell - can we refactor to get rid of this increment and instead only
-	// decrement when appropriate?
 	if majorIdx < len(files)-1 {
 		majorIdx++
 	}
@@ -95,11 +93,4 @@ func changedNames(files PFnpSlice) []RenameEntry {
 		}
 	}
 	return renames
-}
-
-func max(i, j int) int {
-	if i > j {
-		return i
-	}
-	return j
 }

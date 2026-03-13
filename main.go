@@ -24,7 +24,7 @@ func main() {
 	stats := flag.Bool("stats", false, "Generate statistics on file naming")
 	flag.Parse()
 
-	if dir == nil || len(*dir) < 1 {
+	if *dir == "" {
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -37,12 +37,12 @@ func main() {
 
 	errors, unused := ValidateFileNames(fileNames, *ignoreMajor, *ignoreMinorZero)
 	// Display errors for any malformed filenames
-	if quiet != nil && !*quiet {
+	if !*quiet {
 		fmt.Println(errors)
 	}
 
 	// Determine file name changes
-	if renumber != nil && *renumber {
+	if *renumber {
 		ren := ComputeRenames(fileNames, unused)
 		if len(ren) > 0 {
 			fmt.Println("\nProposed renames: ")
@@ -51,15 +51,15 @@ func main() {
 			}
 			if prompt("Rename files?") {
 				for _, r := range ren {
-					RenameFile(r.oldName, r.newName, dir)
+					RenameFile(r.oldName, r.newName, *dir)
 				}
 			}
 		} else {
-			fmt.Println("\nNo proposed renamed.")
+			fmt.Println("\nNo proposed renames.")
 		}
 	}
 
-	if stats != nil && *stats {
+	if *stats {
 		fmt.Println("")
 		for _, s := range ComputeStats(fileNames) {
 			fmt.Printf("%d\t%s\n", s.count, s.tag)
@@ -77,12 +77,11 @@ func prompt(q string) bool {
 			log.Fatal(err)
 		}
 		// Replace line endings
-		a = strings.Replace(a, "\n", "", -1)
-		a = strings.Replace(a, "\r", "", -1)
+		a = strings.TrimSpace(a)
 		if len(a) != 1 {
 			continue
 		}
-		switch strings.ToLower(strings.TrimSpace(a))[0] {
+		switch strings.ToLower(a)[0] {
 		case 'y':
 			return true
 		case 'n':

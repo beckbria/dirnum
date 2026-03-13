@@ -2,23 +2,23 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 )
 
 var ignoreRegEx = regexp.MustCompile(`^Thumbs\.db$`)
 
-func RenameFile(oldName, newName string, dirName *string) {
-	oldPath := *dirName + string(os.PathSeparator) + oldName
-	newPath := *dirName + string(os.PathSeparator) + newName
+func RenameFile(oldName, newName, dirName string) {
+	oldPath := filepath.Join(dirName, oldName)
+	newPath := filepath.Join(dirName, newName)
 	fmt.Printf("Renaming %s to %s\n", oldPath, newPath)
 	os.Rename(oldPath, newPath)
 }
 
 func ReadFileNames(dir string) ([]string, error) {
 	fileNames := make([]string, 0)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return fileNames, err
 	}

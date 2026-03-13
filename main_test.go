@@ -9,17 +9,16 @@ import (
 func TestValidFiles(t *testing.T) {
 	valid := []string{
 		"0000.jpg",
-		"0001.png",
-		"0002.gif",
-		"0003-0.jpg",
-		"0003-1.png",
-		"0003-2-foo.jpg",
-		"0003-3-FOO.jpg",
-		"0004-bar.gif"}
+		"0001.gif",
+		"0002-0.jpg",
+		"0002-1.jpeg",
+		"0002-2-foo.jpg",
+		"0002-3-FOO.jpg",
+		"0003-bar.gif"}
 
 	noErrors := make(ValidationErrors)
-	err, _ := ValidateFileNames(valid, false, false)
-	assert.Equal(t, noErrors, err)
+	errors, _ := ValidateFileNames(valid, false, false)
+	assert.Equal(t, noErrors, errors)
 }
 
 func TestInvalidFiles(t *testing.T) {
@@ -31,9 +30,9 @@ func TestInvalidFiles(t *testing.T) {
 		"0000foo.jpg"}
 
 	for _, i := range invalid {
-		err, _ := ValidateFileNames([]string{i}, false, false)
-		_, found := err[i]
-		assert.Equal(t, true, found, i)
+		errors, _ := ValidateFileNames([]string{i}, false, false)
+		_, found := errors[i]
+		assert.True(t, found, i)
 	}
 }
 

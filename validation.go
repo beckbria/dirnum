@@ -150,7 +150,7 @@ func validateMinor(nums []int, ignoreMinorZero bool) map[int]string {
 	} else if len(nums) > 1 {
 		prev := -1
 		for _, n := range nums {
-			if n != NoVersion && n != (prev+1) {
+			if n != (prev + 1) {
 				if prev == -1 || prev == NoVersion {
 					if !ignoreMinorZero {
 						errors[n] = "Minor version numbering must start with 0: %s"

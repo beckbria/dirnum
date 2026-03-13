@@ -17,10 +17,10 @@ type FileNamePieces struct {
 func (f *FileNamePieces) String() string {
 	var b strings.Builder
 	b.Grow(len(f.originalName))
-	b.WriteString(prependZeroes(strconv.Itoa(f.major), f.majorDigits)) // Major version
+	fmt.Fprintf(&b, "%0*d", f.majorDigits, f.major)
 	if f.minor != NoVersion {
 		b.WriteRune('-')
-		b.WriteString(prependZeroes(strconv.Itoa(f.minor), f.minorDigits))
+		fmt.Fprintf(&b, "%0*d", f.minorDigits, f.minor)
 	}
 	if len(f.descriptor) > 0 {
 		// The descriptor includes the leading dash
@@ -29,13 +29,6 @@ func (f *FileNamePieces) String() string {
 	b.WriteRune('.')
 	b.WriteString(f.extension)
 	return b.String()
-}
-
-func prependZeroes(n string, l int) string {
-	for len(n) < l {
-		n = "0" + n
-	}
-	return n
 }
 
 func ParseFileName(f string) (*FileNamePieces, error) {
@@ -49,7 +42,7 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 	}
 	minor := NoVersion
 	if len(tokens[2]) > 0 {
-		minorStr := string([]rune(tokens[2])[1:])
+		minorStr := tokens[2][1:]
 		m, err := strconv.Atoi(minorStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid minor version \"%s\": %s", minorStr, f)
