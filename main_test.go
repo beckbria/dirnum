@@ -14,11 +14,32 @@ func TestValidFiles(t *testing.T) {
 		"0002-1.jpeg",
 		"0002-2-foo.jpg",
 		"0002-3-FOO.jpg",
-		"0003-bar.gif"}
+		"0003-bar.gif",
+		"0004.JPG",
+		"0005.GIF",
+		"0006.JpG"}
 
 	noErrors := make(ValidationErrors)
 	errors, _ := ValidateFileNames(valid, false, false)
 	assert.Equal(t, noErrors, errors)
+}
+
+func TestParseFileNameExtension(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"0000.JPG", "jpg"},
+		{"0001.GIF", "gif"},
+		{"0002-0.JPEG", "jpg"},
+		{"0002-1.JpG", "jpg"},
+	}
+
+	for _, tc := range tests {
+		actual, err := ParseFileName(tc.input)
+		assert.NoError(t, err)
+		assert.Equal(t, tc.expected, actual.extension)
+	}
 }
 
 func TestInvalidFiles(t *testing.T) {

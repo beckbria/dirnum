@@ -11,7 +11,7 @@ const (
 	majorRegex      = `([0-9]+)`
 	minorRegex      = `(-[0-9]+)?`
 	descriptorRegex = `(-[A-Za-z][A-Za-z0-9_' ,]+)?`
-	extensionRegex  = `\.(jpg|gif|jpeg)`
+	extensionRegex  = `\.([jJ][pP][gG]|[gG][iI][fF]|[jJ][pP][eE][gG])`
 )
 
 var fileRegEx = regexp.MustCompile(`^` + majorRegex + minorRegex + descriptorRegex + extensionRegex + `$`)

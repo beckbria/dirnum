@@ -59,7 +59,7 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 		majorDigits:  len(strconv.Itoa(major)),
 		minorDigits:  minorDigits,
 		descriptor:   tokens[3],
-		extension:    tokens[4],
+		extension:    strings.ToLower(tokens[4]),
 		originalName: f,
 	}
 	if name.extension == "jpeg" {
