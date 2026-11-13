@@ -10,8 +10,8 @@ import (
 const NoVersion = -99 // Indicates a file with no minor version
 
 type FileNamePieces struct {
-	major, minor, majorDigits, minorDigits int
-	originalName, descriptor, extension    string
+	major, minor, majorDigits, minorDigits                   int
+	originalName, descriptor, secondaryDescriptor, extension string
 }
 
 func (f *FileNamePieces) String() string {
@@ -25,6 +25,10 @@ func (f *FileNamePieces) String() string {
 	if len(f.descriptor) > 0 {
 		// The descriptor includes the leading dash
 		b.WriteString(f.descriptor)
+	}
+	if len(f.secondaryDescriptor) > 0 {
+		// The secondaryDescriptor includes the leading dash
+		b.WriteString(f.secondaryDescriptor)
 	}
 	b.WriteRune('.')
 	b.WriteString(f.extension)
@@ -54,13 +58,14 @@ func ParseFileName(f string) (*FileNamePieces, error) {
 		minorDigits = len(strconv.Itoa(minor))
 	}
 	name := FileNamePieces{
-		major:        major,
-		minor:        minor,
-		majorDigits:  len(strconv.Itoa(major)),
-		minorDigits:  minorDigits,
-		descriptor:   tokens[3],
-		extension:    strings.ToLower(tokens[4]),
-		originalName: f,
+		major:               major,
+		minor:               minor,
+		majorDigits:         len(strconv.Itoa(major)),
+		minorDigits:         minorDigits,
+		descriptor:          tokens[3],
+		secondaryDescriptor: tokens[4],
+		extension:           strings.ToLower(tokens[5]),
+		originalName:        f,
 	}
 	if name.extension == "jpeg" {
 		name.extension = "jpg"

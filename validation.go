@@ -8,13 +8,14 @@ import (
 )
 
 const (
-	majorRegex      = `([0-9]+)`
-	minorRegex      = `(-[0-9]+)?`
-	descriptorRegex = `(-[A-Za-z][A-Za-z0-9_' ,]+)?`
-	extensionRegex  = `\.([jJ][pP][gG]|[gG][iI][fF]|[jJ][pP][eE][gG])`
+	majorRegex               = `([0-9]+)`
+	minorRegex               = `(-[0-9]+)?`
+	descriptorRegex          = `(-[A-Za-z][A-Za-z0-9_' ' ,]+)?`
+	secondaryDescriptorRegex = `(-[A-Za-z0-9' ]+)?`
+	extensionRegex           = `\.([jJ][pP][gG]|[gG][iI][fF]|[jJ][pP][eE][gG])`
 )
 
-var fileRegEx = regexp.MustCompile(`^` + majorRegex + minorRegex + descriptorRegex + extensionRegex + `$`)
+var fileRegEx = regexp.MustCompile(`^` + majorRegex + minorRegex + descriptorRegex + secondaryDescriptorRegex + extensionRegex + `$`)
 
 type ValidationErrors map[string][]string
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestPlanExport(t *testing.T) {
@@ -78,4 +78,3 @@ func TestPlanExportMinCount(t *testing.T) {
 	}
 	assert.Equal(t, expected, actual)
 }
-

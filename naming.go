@@ -100,10 +100,10 @@ func changedNames(files PFnpSlice) []RenameEntry {
 // Computes the renames needed to append one major group to another.
 func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
 	files := ParseFileNames(fileNames)
-	
+
 	ontoMaxMinor := NoVersion
 	hasOntoFiles := false
-	
+
 	// Find the max minor version in the 'onto' group
 	for _, f := range files {
 		if f.major == onto {
@@ -113,7 +113,7 @@ func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
 			}
 		}
 	}
-	
+
 	if hasOntoFiles {
 		if ontoMaxMinor == NoVersion {
 			// If the onto group has only NoVersion files, we will number the existing one(s) as 0, and start appending at 1
@@ -129,7 +129,7 @@ func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
 	} else {
 		ontoMaxMinor = -1
 	}
-	
+
 	// 'from' files that need to be appended
 	var fromFiles []*FileNamePieces
 	for _, f := range files {
@@ -137,7 +137,7 @@ func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
 			fromFiles = append(fromFiles, f)
 		}
 	}
-	
+
 	// Append 'from' files to 'onto'
 	// Minor numbers are sequentially assigned starting after ontoMaxMinor
 	for _, f := range fromFiles {
@@ -147,7 +147,7 @@ func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
 		f.majorDigits = len(strconv.Itoa(f.major))
 		f.minorDigits = len(strconv.Itoa(f.minor))
 	}
-	
+
 	// Now all files have correct major and minor numbers.
 	// We need to re-sort the files so that `computeDigitCounts` and `changedNames` process things in the correct order,
 	// though `computeDigitCounts` actually doesn't care about order. We'll leave it since `files` are already collected.
@@ -165,6 +165,6 @@ func ComputeAppend(fileNames []string, from, onto int) []RenameEntry {
 			relevantFiles = append(relevantFiles, f)
 		}
 	}
-	
+
 	return changedNames(relevantFiles)
 }

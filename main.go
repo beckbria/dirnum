@@ -4,6 +4,7 @@
 // 0000.jpg, 0001.jpg, etc.
 // 0000-0.jpg, 0000-1.jpg, etc. - Minor versions for grouped files
 // 0000-note.jpg, 0000-0-note.jpg, etc. - Text annotations on file names
+// 0000-note-second note.jpg - Secondary description strings on file names
 package main
 
 import (

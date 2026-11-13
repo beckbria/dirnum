@@ -17,7 +17,14 @@ func TestValidFiles(t *testing.T) {
 		"0003-bar.gif",
 		"0004.JPG",
 		"0005.GIF",
-		"0006.JpG"}
+		"0006.JpG",
+		"0007-0-Foo-Bar.jpg",
+		"0007-1-Foo-Bar.jpg",
+		"0008-Foo-It's Nice.jpg",
+		"0009-0-Name One, Second Name-Descriptive Sentence Here.jpg",
+		"0009-1.jpg",
+		"0010-0foo.jpg",
+		"0011-Foo-Bar123.jpg"}
 
 	noErrors := make(ValidationErrors)
 	errors, _ := ValidateFileNames(valid, false, false)
@@ -42,13 +49,69 @@ func TestParseFileNameExtension(t *testing.T) {
 	}
 }
 
+func TestParseFileNameSecondaryDescriptor(t *testing.T) {
+	tests := []struct {
+		input                       string
+		expectedMajor               int
+		expectedMinor               int
+		expectedDescriptor          string
+		expectedSecondaryDescriptor string
+		expectedExt                 string
+	}{
+		{
+			input:                       "1234-5-Name One, Second Name-Descriptive Sentence Here.jpg",
+			expectedMajor:               1234,
+			expectedMinor:               5,
+			expectedDescriptor:          "-Name One, Second Name",
+			expectedSecondaryDescriptor: "-Descriptive Sentence Here",
+			expectedExt:                 "jpg",
+		},
+		{
+			input:                       "2-2-foo-bar.jpg",
+			expectedMajor:               2,
+			expectedMinor:               2,
+			expectedDescriptor:          "-foo",
+			expectedSecondaryDescriptor: "-bar",
+			expectedExt:                 "jpg",
+		},
+		{
+			input:                       "2-2-foo.jpg",
+			expectedMajor:               2,
+			expectedMinor:               2,
+			expectedDescriptor:          "-foo",
+			expectedSecondaryDescriptor: "",
+			expectedExt:                 "jpg",
+		},
+		{
+			input:                       "3-Tag-It's A Test.jpg",
+			expectedMajor:               3,
+			expectedMinor:               NoVersion,
+			expectedDescriptor:          "-Tag",
+			expectedSecondaryDescriptor: "-It's A Test",
+			expectedExt:                 "jpg",
+		},
+	}
+
+	for _, tc := range tests {
+		actual, err := ParseFileName(tc.input)
+		assert.NoError(t, err)
+		assert.Equal(t, tc.expectedMajor, actual.major)
+		assert.Equal(t, tc.expectedMinor, actual.minor)
+		assert.Equal(t, tc.expectedDescriptor, actual.descriptor)
+		assert.Equal(t, tc.expectedSecondaryDescriptor, actual.secondaryDescriptor)
+		assert.Equal(t, tc.expectedExt, actual.extension)
+		assert.Equal(t, tc.input, actual.String())
+	}
+}
+
 func TestInvalidFiles(t *testing.T) {
 	invalid := []string{
 		"0-0-0ff.jpg",
-		"0-0foo.jpg",
 		"0000.mp4",
 		"foo.jpg",
-		"0000foo.jpg"}
+		"0000foo.jpg",
+		"0000-Foo-Bar, Baz.jpg",
+		"0000-Foo-Bar-Baz.jpg"}
 
 	for _, i := range invalid {
 		errors, _ := ValidateFileNames([]string{i}, false, false)
@@ -209,7 +272,7 @@ func TestComputeStats(t *testing.T) {
 		"0-Foo.jpg",
 		"1-0-Bar.jpg",
 		"1-1-Foo, Baz.jpg",
-		"2.jpg", // No stats
+		"2.jpg",   // No stats
 		"foo.jpg", // Invalid
 	}
 	expected := []MetadataStat{
@@ -217,7 +280,7 @@ func TestComputeStats(t *testing.T) {
 		{tag: "Bar", files: []string{"1-0-Bar.jpg"}},
 		{tag: "Baz", files: []string{"1-1-Foo, Baz.jpg"}},
 	}
-	
+
 	actual := ComputeStats(files)
 	assert.ElementsMatch(t, expected, actual)
 }
@@ -228,9 +291,9 @@ func TestSortStatsAlphabetical(t *testing.T) {
 		{tag: "Bar", files: []string{"3.jpg"}},
 		{tag: "Apple", files: []string{"4.jpg"}},
 	}
-	
+
 	SortStatsAlphabetical(stats)
-	
+
 	expected := []MetadataStat{
 		{tag: "Apple", files: []string{"4.jpg"}},
 		{tag: "Bar", files: []string{"3.jpg"}},
@@ -246,9 +309,9 @@ func TestSortStatsByFrequency(t *testing.T) {
 		{tag: "Bar", files: []string{"3.jpg"}},
 		{tag: "Zeta", files: []string{"5.jpg", "6.jpg"}},
 	}
-	
+
 	SortStatsByFrequency(stats)
-	
+
 	expected := []MetadataStat{
 		{tag: "Foo", files: []string{"1.jpg", "2.jpg"}},
 		{tag: "Zeta", files: []string{"5.jpg", "6.jpg"}},
@@ -334,4 +397,72 @@ func TestAppendIgnoreOtherFiles(t *testing.T) {
 		{oldName: "3.jpg", newName: "1-1.jpg"},
 	}
 	assert.ElementsMatch(t, expected, ComputeAppend(files, 3, 1))
+}
+
+func TestComputeStats_IgnoresSecondaryDescriptor(t *testing.T) {
+	files := []string{
+		"1234-5-Name One, Second Name-Descriptive Sentence Here.jpg",
+		"1234-6-Name One-Another Sentence.jpg",
+		"1235-0-Third Name-Sentence.jpg",
+	}
+	expected := []MetadataStat{
+		{tag: "Name One", files: []string{
+			"1234-5-Name One, Second Name-Descriptive Sentence Here.jpg",
+			"1234-6-Name One-Another Sentence.jpg",
+		}},
+		{tag: "Second Name", files: []string{
+			"1234-5-Name One, Second Name-Descriptive Sentence Here.jpg",
+		}},
+		{tag: "Third Name", files: []string{
+			"1235-0-Third Name-Sentence.jpg",
+		}},
+	}
+
+	actual := ComputeStats(files)
+	assert.ElementsMatch(t, expected, actual)
+}
+
+func TestRenamePreservesSecondaryDescriptor(t *testing.T) {
+	files := []string{
+		"1.jpg",
+		"2-Tag-Description One.jpg",
+		"5-0-Tag One, Tag Two-Description Two.jpg",
+		"5-1-Tag-Don't Forget.jpg",
+		"6.jpg",
+	}
+	expected := []RenameEntry{
+		{
+			oldName: "5-0-Tag One, Tag Two-Description Two.jpg",
+			newName: "0-0-Tag One, Tag Two-Description Two.jpg",
+		},
+		{
+			oldName: "5-1-Tag-Don't Forget.jpg",
+			newName: "0-1-Tag-Don't Forget.jpg",
+		},
+		{
+			oldName: "6.jpg",
+			newName: "3.jpg",
+		},
+	}
+	assert.ElementsMatch(t, expected, ComputeRenames(files, []int{0, 3, 4}))
+}
+
+func TestAppendPreservesSecondaryDescriptor(t *testing.T) {
+	files := []string{
+		"1-0-Foo-First Note.jpg",
+		"1-1-Bar-Second Note.jpg",
+		"2-0-Baz-Don't Panic.jpg",
+		"2-1-Qux-Final Note.jpg",
+	}
+	expected := []RenameEntry{
+		{
+			oldName: "2-0-Baz-Don't Panic.jpg",
+			newName: "1-2-Baz-Don't Panic.jpg",
+		},
+		{
+			oldName: "2-1-Qux-Final Note.jpg",
+			newName: "1-3-Qux-Final Note.jpg",
+		},
+	}
+	assert.ElementsMatch(t, expected, ComputeAppend(files, 2, 1))
 }
