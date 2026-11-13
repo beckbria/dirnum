@@ -4,3 +4,5 @@ linux-dirnum
 win-dirnum.exe
 .vscode
 testdir
+dn.bat
+.gitignore

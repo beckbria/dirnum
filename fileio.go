@@ -1,14 +1,65 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
-var ignoreRegEx = regexp.MustCompile(`^Thumbs\.db$`)
+type ignoreList []*regexp.Regexp
+
+func wildcardToRegex(pattern string) (*regexp.Regexp, error) {
+	escaped := regexp.QuoteMeta(pattern)
+	escaped = strings.ReplaceAll(escaped, `\*`, `.*`)
+	escaped = strings.ReplaceAll(escaped, `\?`, `.`)
+	return regexp.Compile("^" + escaped + "$")
+}
+
+func readIgnorePatterns(dir string) (ignoreList, error) {
+	f, err := os.Open(filepath.Join(dir, ".ignore"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer f.Close()
+
+	var patterns ignoreList
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		re, err := wildcardToRegex(line)
+		if err != nil {
+			return nil, err
+		}
+		patterns = append(patterns, re)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return patterns, nil
+}
+
+func (il ignoreList) shouldIgnore(name string) bool {
+	if name == ".ignore" {
+		return true
+	}
+	for _, re := range il {
+		if re.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
 
 func RenameFile(oldName, newName, dirName string) {
 	oldPath := filepath.Join(dirName, oldName)
@@ -23,9 +74,13 @@ func ReadFileNames(dir string) ([]string, error) {
 	if err != nil {
 		return fileNames, err
 	}
+	ignores, err := readIgnorePatterns(dir)
+	if err != nil {
+		return fileNames, err
+	}
 	for _, f := range files {
 		n := f.Name()
-		if !ignoreRegEx.MatchString(n) {
+		if !ignores.shouldIgnore(n) {
 			fileNames = append(fileNames, n)
 		}
 	}
